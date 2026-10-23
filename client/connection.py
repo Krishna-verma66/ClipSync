@@ -2,14 +2,15 @@ import socket
 from shared.constants import SOCKET_TIMEOUT
 
 
-class ClientConnection:
+class ClientManager:
     
-    def __init__(self, IP_add: str, port: int):
+    def __init__(self, IP_add: str = None, port: int = None):
         self.client = None
         self.current_server_ip = IP_add
         self.current_server_port = port
 
-    def connect(self):
+    def connect(self, IP_add: str = None, port: int = None):
+        self.__init__(IP_add, port)
         try:
 
             self.client = socket.socket(
@@ -20,7 +21,7 @@ class ClientConnection:
             self.client.settimeout(SOCKET_TIMEOUT)
             self.client.connect((self.current_server_ip, self.current_server_port))
 
-            print(f"Connection Establisheed With Server {self.current_server_ip}:{self.current_server_port}")
+            print(f"Connection Established With Server {self.current_server_ip}:{self.current_server_port}")
 
         except socket.gaierror:
             print("There is an error in ip address or not reachable.")
@@ -42,6 +43,7 @@ class ClientConnection:
         try:
             if self.client is not None:
                 self.client.close()
+                self.client = None
                 print(f"Client Disconnected Successfully From Server {self.current_server_ip}:{self.current_server_port}")
         except Exception:
             print(f"There is something wrong while disconnecting to Server {self.current_server_ip}:{self.current_server_port}")

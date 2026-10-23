@@ -1,12 +1,20 @@
 from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID, uuid4
-
+from .constants import DEFAULT_PORT
 from pydantic import BaseModel, Field
 
 
+class DeviceDiscoveryMessage(BaseModel):
+    type: Literal["discovery"] = "discovery"
+    device_id: str = Field(min_length=1, max_length=150)
+    device_name: str = Field(min_length=1, max_length=150)
+    tcp_port: int = DEFAULT_PORT
+    protocol_version: int = 1 
+
+
 class BaseMessage(BaseModel):
-    message_id: UUID = Field(default_factory=uuid4)
+    message_id: str = Field(min_length=1, max_length=150)
     protocol_version: int = 1
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
@@ -22,17 +30,7 @@ class ConnectMessage(BaseMessage):
 
 class ClipboardUpdateMessage(BaseMessage):
     type: Literal["clipboard_update"] = "clipboard_update"
-    device_id: UUID
+    device_id: str = Field(min_length=1, max_length=150)
     content: str = Field(max_length=500_000)
 
 
-class AckMessage(BaseMessage):
-    type: Literal["ack"] = "ack"
-    acknowledged_message_id: UUID
-    success: bool = True
-
-
-class ErrorMessage(BaseMessage):
-    type: Literal["error"] = "error"
-    code: str
-    detail: str
