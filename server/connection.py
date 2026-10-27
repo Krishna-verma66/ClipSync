@@ -62,6 +62,7 @@ class ServerManager:
                     if len(self.client_connections) < 1:
                         client_connection, address = self.server_socket.accept()
                         self.client_connections.append((client_connection, address,))
+                        print(f"Connection Established Suncessfully With {address[0]}:{address[1]}")
 
                 except socket.timeout:
                     continue
@@ -78,9 +79,7 @@ class ServerManager:
 
 
     def close(self) -> None:
-
         self._stop_event.set()
-
         if self.server_socket is not None:
             try:
                 self.server_socket.close()
@@ -99,7 +98,6 @@ class ServerManager:
     def _get_private_ip(self) -> str:
 
         getIp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
         try:
             # Doesn't actually send data, just finds the interface used for external traffic
             getIp.connect(("8.8.8.8", 80))

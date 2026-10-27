@@ -73,27 +73,46 @@ def main():
                         device_ip = device["ip"]
                         device_port = device["tcp_port"]
 
-                        client_socket = initiate_connection.connect(device_ip, device_port)
-                        is_connected = True
+                        #Socket created by clinet connection.
+                        if not is_connected:
+                            client_socket = initiate_connection.connect(device_ip, device_port)
+                            is_connected = True
+
 
                 except Exception:
                     print("Enter Valid Device Number.")
 
             elif command == "DISCONNECT":
-                initiate_connection.closeClientConnection()
+                if is_connected:
+                    initiate_connection.closeClientConnection()
+                    is_connected = False
+
+                if len(server_manager.client_connections)>0:
+                    server_manager.close_client()
+
 
             elif command == "SYNC ON":
+                client_sock = None
+
                 if sync_enabled.is_set():
                     sync_enabled.clear()
 
                 if is_connected:
-                    receiver_manager = ReceiverManager(client_socket, sync_enabled)
-                    sender_manager = SenderManager(my_device, client_socket, sync_enabled)
-                    
-                    receiver_manager.start()
-                    sender_manager.start()
+                    client_sock = client_socket
+                elif len(server_manager.client_connections)>0:
+                    client_sock = server_manager.client_connections[0][0]
                 else:
-                    print("You are not connected to anyone.")
+                    print("You Are Not paired With Any Device.")
+                    continue
+
+
+                receiver_manager = ReceiverManager(client_sock, sync_enabled)
+                sender_manager = SenderManager(my_device, client_sock, sync_enabled)
+                    
+                receiver_manager.start()
+                sender_manager.start()
+                    
+
 
             elif command == "SYNC OFF":
                 if sender_manager is not None and receiver_manager is not None:

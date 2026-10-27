@@ -34,7 +34,6 @@ class ReceiverManager:
             try:
                 message_bytes = self.connection.recv(MAX_MESSAGE_SIZE)
                 message_dict = self.validate_message(message_bytes)
-                print(message_dict)
 
                 if (message_dict is not None) and message_dict["type"] == "clipboard_update":
                     content = message_dict.get("content", None)
@@ -45,9 +44,9 @@ class ReceiverManager:
             except socket.timeout:
                 pass
 
-            except Exception:
-                break
-        print("reciever ends")
+            except Exception as ex:
+                print(ex)
+
 
 
     def validate_message(

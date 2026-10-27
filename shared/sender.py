@@ -30,12 +30,12 @@ class SenderManager:
         while not self.stop_event.is_set():
             try:
                 textdata = self.clipboard_manager.get_clipboard_update()
-        
+
                 if textdata is not None:
                     bytedata = self.clipboard_message_formation(textdata)
                     self.connection.sendall(bytedata)
 
-            except Exception:
+            except Exception as ex:
                 break
 
     def clipboard_message_formation(self, text):
