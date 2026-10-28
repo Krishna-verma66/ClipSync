@@ -36,7 +36,7 @@ class SenderManager:
                     self.connection.sendall(bytedata)
 
             except Exception as ex:
-                break
+                self.stop_event.set()
 
     def clipboard_message_formation(self, text):
         message = ClipboardUpdateMessage(

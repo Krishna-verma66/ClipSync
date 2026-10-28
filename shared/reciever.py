@@ -45,7 +45,7 @@ class ReceiverManager:
                 pass
 
             except Exception as ex:
-                print(ex)
+                self.stop_event.set()
 
 
 
