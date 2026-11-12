@@ -1,19 +1,20 @@
 from .clipboard import ClipboardManager
 from pydantic import ValidationError
-from shared.constants import CLIPBOARD_POLL_INTERVAL, MAX_MESSAGE_SIZE
+from shared.constants import MAX_MESSAGE_SIZE
 from shared.schemas import ClipboardUpdateMessage
 import socket
 import threading
 
 
-
+#Implement Connection negotiation using conncetMessage Schema in pydantic(May be have to use broadcast for this).
+#Also implement message synchronization in recv() to take a full chunk of data using Size bits.
+#After this implement Database to store connections info and device info.
 
 class ReceiverManager:
-
-    def __init__(self, connection, stop_event):
+    def __init__(self, connection):
         self.clipboard_manager = ClipboardManager()
         self.connection = connection
-        self.stop_event = stop_event
+        self.stop_event = threading.Event()
 
 
     def start(self):
@@ -42,11 +43,15 @@ class ReceiverManager:
                         self.clipboard_manager.write_clipboard(content)
 
             except socket.timeout:
-                pass
+                continue
 
-            except Exception as ex:
+            except ConnectionResetError:
+                print("Connection reset by peer")
                 self.stop_event.set()
 
+            except OSError as ex:
+                print(f"Socket error: {ex}")
+                self.stop_event.set()
 
 
     def validate_message(
@@ -62,4 +67,6 @@ class ReceiverManager:
         except ValidationError as exc:
             return None
 
-
+    def closeReceiver(self):
+        if(not self.stop_event.is_set()):
+            self.stop_event.set()

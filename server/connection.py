@@ -5,14 +5,13 @@ import threading
 
 class ServerManager:
 
-    def __init__(self, host: str = None, port: int = DEFAULT_PORT, lock=None):
+    def __init__(self, host: str = None, port: int = DEFAULT_PORT, connectionregistry = None):
         self.host = host or self._get_private_ip()
         self.port = port
         self.server_socket = None
-        self.client_connections = []
-        self._is_binded = False
+        self.is_binded = False
         self._stop_event = threading.Event()
-        self.lock = lock
+        self.connectionregistry = connectionregistry
 
 
     def start(self):
@@ -27,6 +26,21 @@ class ServerManager:
         except KeyboardInterrupt:
             self.stop_event.set()
 
+    
+    def _get_private_ip(self) -> str:
+    
+        getIp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Doesn't actually send data, just finds the interface used for external traffic
+            getIp.connect(("8.8.8.8", 80))
+            ip = getIp.getsockname()[0]
+        except Exception:
+            ip = "127.0.0.1"  # fallback
+        finally:
+            getIp.close()
+        return ip
+    
+    
     def run(self):
 
         self.server_socket = socket.socket(
@@ -41,12 +55,12 @@ class ServerManager:
             1, # 1->Enable, 0->Disable
         )
 
-        while not self._is_binded:
+        while not self.is_binded:
             try:
                 self.server_socket.bind((self.host, self.port))
                 self.server_socket.listen(3)
                 self.server_socket.settimeout(1.0)
-                self._is_binded = True
+                self.is_binded = True
 
             except OSError:
                 print("Port Changing")
@@ -59,11 +73,10 @@ class ServerManager:
             while not self._stop_event.is_set():
 
                 try:
-                    if len(self.client_connections) < 1:
+                    if self.connectionregistry.get_connection_count() < 1:
                         client_connection, address = self.server_socket.accept()
-                        self.client_connections.append((client_connection, address,))
-                        print(f"Connection Established Suncessfully With {address[0]}:{address[1]}")
-
+                        self.connectionregistry.add_connection(address, client_connection)
+                        print(f"Connection Established Suncessfully With {address}")
                 except socket.timeout:
                     continue
                 except OSError:
@@ -72,7 +85,7 @@ class ServerManager:
                     self._stop_event.set()
 
         except KeyboardInterrupt:
-            pass
+            self._stop_event.set()
 
         finally:
             self.close()
@@ -89,23 +102,5 @@ class ServerManager:
         print("ClipSync Server Is Stopped")
 
 
-    def close_client(self) -> None:
-        conn = self.client_connections.pop()
-        conn[0].close()
-
-
-
-    def _get_private_ip(self) -> str:
-
-        getIp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            # Doesn't actually send data, just finds the interface used for external traffic
-            getIp.connect(("8.8.8.8", 80))
-            ip = getIp.getsockname()[0]
-        except Exception:
-            ip = "127.0.0.1"  # fallback
-        finally:
-            getIp.close()
-        return ip
 
 

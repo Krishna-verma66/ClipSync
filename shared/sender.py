@@ -1,4 +1,5 @@
 from .clipboard import ClipboardManager
+import time
 from shared.constants import CLIPBOARD_POLL_INTERVAL, MAX_MESSAGE_SIZE
 from shared.schemas import ClipboardUpdateMessage
 from uuid import uuid4
@@ -7,10 +8,10 @@ from device_conf import load_or_create_device_config
 
 
 class SenderManager:
-    def __init__(self, my_device, connection, stop_event):
+    def __init__(self, my_device, connection):
         self.clipboard_manager = ClipboardManager()
         self.connection = connection
-        self.stop_event = stop_event
+        self.stop_event = threading.Event()
         self.my_device = my_device
 
     def start(self):
@@ -37,6 +38,8 @@ class SenderManager:
 
             except Exception as ex:
                 self.stop_event.set()
+                
+            time.sleep(CLIPBOARD_POLL_INTERVAL)
 
     def clipboard_message_formation(self, text):
         message = ClipboardUpdateMessage(
@@ -47,8 +50,9 @@ class SenderManager:
         bytedata = message.model_dump_json().encode("utf-8")
         return bytedata
 
-
-
+    def closeSender(self):
+        if(not self.stop_event.is_set()):
+            self.stop_event.set()
     
 
         

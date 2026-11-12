@@ -15,7 +15,7 @@ class DeviceDiscoveryMessage(BaseModel):
 
 class BaseMessage(BaseModel):
     message_id: str = Field(min_length=1, max_length=150)
-    protocol_version: int = 1
+    protocol_version: int = 1 
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )

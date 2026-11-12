@@ -4,49 +4,72 @@ from shared.constants import SOCKET_TIMEOUT
 
 class ClientManager:
     
-    def __init__(self, IP_add: str = None, port: int = None):
-        self.client = None
-        self.current_server_ip = IP_add
-        self.current_server_port = port
+    def __init__(self, connectionregistry = None):
+        self.connectionregistry = connectionregistry
 
     def connect(self, IP_add: str = None, port: int = None):
-        self.__init__(IP_add, port)
         try:
 
-            self.client = socket.socket(
-                socket.AF_INET, 
-                socket.SOCK_STREAM
-            )
+            if(self.connectionregistry.get_connection_count() < 1):
+            
+                client_socket = socket.socket(
+                    socket.AF_INET, 
+                    socket.SOCK_STREAM
+                )
 
-            self.client.settimeout(SOCKET_TIMEOUT)
-            self.client.connect((self.current_server_ip, self.current_server_port))
+                client_socket.settimeout(SOCKET_TIMEOUT)
+                client_socket.connect((IP_add, port))
 
-            print(f"Connection Established With Server {self.current_server_ip}:{self.current_server_port}")
+                self.connectionregistry.add_connection(client_socket.getpeername(), client_socket)
+                print(f"Connection Established With Server {client_socket.getpeername()}")
+            else:
+                print(f"You Are Already Connected With {self.connectionregistry.get_all_connections()[0][0]}")
 
         except socket.gaierror:
-            print("There is an error in ip address or not reachable.")
-            self.client = None
+            print("Invalid HostName or IP.")
+            try: 
+                client_socket.close()
+            except OSError: 
+                pass
 
         except ConnectionRefusedError:
-            print(f"Connection Refused - Server({self.current_server_ip}) Is Not Working Or Listening On Different Port({self.current_server_port}).")
-            self.client = None
+            print(f"Connection Refused - Server({client_socket.getpeername()}) Not Reachable.")
+            try: 
+                client_socket.close()
+            except OSError: 
+                pass
 
         except socket.timeout:
-            print("Connection TimeOut...")
-            self.client = None
+            print("Connection Timed Out.")
+            try: 
+                client_socket.close()
+            except OSError: 
+                pass
 
+        except OSError as ex:
+            print(ex)
+            try: 
+                client_socket.close()
+            except OSError: 
+                pass 
 
-        return self.client
+        
     
-    
-    def closeClientConnection(self):
+    def closeConnection(self):
         try:
-            if self.client is not None:
-                self.client.close()
-                self.client = None
-                print(f"Client Disconnected Successfully From Server {self.current_server_ip}:{self.current_server_port}")
+            if self.connectionregistry.get_connection_count() > 0:
+                connection_list = self.connectionregistry.get_all_connections()
+                connection = connection_list.pop()
+                connection[1].close()
+
+                connection_id = connection[0]
+
+                removed = self.connectionregistry.remove_connection(connection_id)
+                print(f"Connection Closed with {connection_id} Successfully.")
+            else:
+                print("You Are Not Connected To Anyone.")
         except Exception:
-            print(f"There is something wrong while disconnecting to Server {self.current_server_ip}:{self.current_server_port}")
+            print(f"There is something wrong while disconnecting to Server {connection[0]}")
         
 
         

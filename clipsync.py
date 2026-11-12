@@ -6,18 +6,17 @@ from server.connection import ServerManager
 from client.connection import ClientManager 
 from shared.reciever import ReceiverManager
 from shared.sender import SenderManager
+from shared.connection_registry import ConnectionRegistry
 
-# make reciever and sender thread and apply pydantic 4:00 complete this
 
 
 
 def main():
     # 1. Initialize application state
+    connectionregistry = ConnectionRegistry()
     lock = threading.Lock()
     stop_event = threading.Event()
-    sync_enabled = threading.Event()
     my_device = load_or_create_device_config()
-    is_connected = False
 
 
     # Device Discovery:
@@ -28,11 +27,11 @@ def main():
     discovery_manager.start()
 
     #Listening Server Start:
-    server_manager = ServerManager(lock=lock)
+    server_manager = ServerManager(connectionregistry=connectionregistry)
     server_manager.start()
 
     # client manager:
-    initiate_connection = ClientManager()
+    client_manager = ClientManager(connectionregistry=connectionregistry)
 
     #Clipboard Synchronzation Managers::
     receiver_manager: ReceiverManager = None
@@ -62,6 +61,10 @@ def main():
                     print(f"Device Listening Port: {device["tcp_port"]}")
                     print()
 
+            elif command == "CONNECTIONS":
+                for i, connection in enumerate(connectionregistry.get_all_connections()):
+                    print(f"{i+1}) {connection[0]}")
+ 
             elif command.startswith("CONNECT"):
                 lst = command.split(" ")
                 discovered_devices = discovery_manager.get_devices()
@@ -74,57 +77,35 @@ def main():
                         device_port = device["tcp_port"]
 
                         #Socket created by clinet connection.
-                        if not is_connected:
-                            client_socket = initiate_connection.connect(device_ip, device_port)
-                            is_connected = True
-
+                        client_manager.connect(device_ip, device_port)
 
                 except Exception:
                     print("Enter Valid Device Number.")
 
             elif command == "DISCONNECT":
-                if is_connected:
-                    initiate_connection.closeClientConnection()
-                    is_connected = False
-
-                if len(server_manager.client_connections)>0:
-                    server_manager.close_client()
-
+                client_manager.closeConnection()
 
             elif command == "SYNC ON":
-                client_sock = None
+                if connectionregistry.get_connection_count() > 0:
+                    receiver_manager = ReceiverManager(connectionregistry.get_all_connections()[0][1])
+                    sender_manager = SenderManager(my_device, connectionregistry.get_all_connections()[0][1])
 
-                if sync_enabled.is_set():
-                    sync_enabled.clear()
-
-                if is_connected:
-                    client_sock = client_socket
-                elif len(server_manager.client_connections)>0:
-                    client_sock = server_manager.client_connections[0][0]
+                    receiver_manager.start()
+                    sender_manager.start()
                 else:
-                    print("You Are Not paired With Any Device.")
-                    continue
-
-
-                receiver_manager = ReceiverManager(client_sock, sync_enabled)
-                sender_manager = SenderManager(my_device, client_sock, sync_enabled)
-                    
-                receiver_manager.start()
-                sender_manager.start()
-                    
-
+                    print("You Are Not Connected To Any Device.")
 
             elif command == "SYNC OFF":
-                if sender_manager is not None and receiver_manager is not None:
-                    sync_enabled.set()
-
+                if((receiver_manager is not None) and (sender_manager is not None)):
+                    receiver_manager.closeReceiver()
+                    sender_manager.closeSender()
+                
             else:
                 print("-----Enter Valid Command------")
                 continue
 
     finally:
         stop_event.set()
-        sync_enabled.set()
 
 
 if __name__ == "__main__":
